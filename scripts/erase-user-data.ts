@@ -37,6 +37,7 @@ import {
   type GdprStorageErasurePayload,
 } from "../src/shared/gdpr-erasure";
 import { GSC_OAUTH_PROVIDER_ID } from "../src/shared/gsc";
+import { YOUTUBE_OAUTH_PROVIDER_ID } from "../src/shared/youtube";
 import { LocalScanStatus } from "../src/shared/local-seo";
 import { loadLocalEnv, parseArgs } from "./cli-utils";
 // The Node-safe raw barrel (not ../src/db/schema, the provider-aware one,
@@ -209,6 +210,7 @@ async function buildInventory(db: Db, user: UserRow) {
         inArray(schema.account.providerId, [
           GSC_OAUTH_PROVIDER_ID,
           GA4_OAUTH_PROVIDER_ID,
+          YOUTUBE_OAUTH_PROVIDER_ID,
         ]),
       ),
     )
@@ -218,8 +220,13 @@ async function buildInventory(db: Db, user: UserRow) {
   // erasure payload's enum.
   const isGoogleProviderId = (
     value: string,
-  ): value is typeof GSC_OAUTH_PROVIDER_ID | typeof GA4_OAUTH_PROVIDER_ID =>
-    value === GSC_OAUTH_PROVIDER_ID || value === GA4_OAUTH_PROVIDER_ID;
+  ): value is
+    | typeof GSC_OAUTH_PROVIDER_ID
+    | typeof GA4_OAUTH_PROVIDER_ID
+    | typeof YOUTUBE_OAUTH_PROVIDER_ID =>
+    value === GSC_OAUTH_PROVIDER_ID ||
+    value === GA4_OAUTH_PROVIDER_ID ||
+    value === YOUTUBE_OAUTH_PROVIDER_ID;
   const googleAccounts = googleAccountRows.flatMap((row) =>
     isGoogleProviderId(row.providerId)
       ? [{ providerId: row.providerId, accountId: row.accountId }]
@@ -347,6 +354,10 @@ async function buildInventory(db: Db, user: UserRow) {
     ga4_connections: await db.$count(
       schema.ga4Connections,
       eq(schema.ga4Connections.connectedByUserId, user.id),
+    ),
+    youtube_connections: await db.$count(
+      schema.youtubeConnections,
+      eq(schema.youtubeConnections.connectedByUserId, user.id),
     ),
     api_keys: await db.$count(
       schema.apikey,
@@ -537,6 +548,9 @@ async function erasePostgres(db: Db, user: UserRow, organizationIds: string[]) {
     await tx
       .delete(schema.ga4Connections)
       .where(eq(schema.ga4Connections.connectedByUserId, user.id));
+    await tx
+      .delete(schema.youtubeConnections)
+      .where(eq(schema.youtubeConnections.connectedByUserId, user.id));
     // apikey.reference_id mirrors the plugin's polymorphic schema and has no
     // user FK, so keys don't cascade with the user row.
     await tx

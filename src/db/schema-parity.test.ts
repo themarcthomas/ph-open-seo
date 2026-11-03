@@ -14,6 +14,7 @@ import * as sqliteSam from "./sam.schema";
 import * as sqliteAuth from "./better-auth-schema";
 import * as sqliteBilling from "./billing.schema";
 import * as sqliteGa4 from "./ga4.schema";
+import * as sqliteYoutube from "./youtube.schema";
 import * as sqliteGsc from "./gsc.schema";
 import * as sqliteTelemetry from "./telemetry.schema";
 import * as sqliteAiVisibility from "./ai-visibility.schema";
@@ -27,6 +28,7 @@ import * as pgSam from "./pg/sam.schema";
 import * as pgAuth from "./pg/better-auth-schema";
 import * as pgBilling from "./pg/billing.schema";
 import * as pgGa4 from "./pg/ga4.schema";
+import * as pgYoutube from "./pg/youtube.schema";
 import * as pgGsc from "./pg/gsc.schema";
 import * as pgTelemetry from "./pg/telemetry.schema";
 import * as pgAiVisibility from "./pg/ai-visibility.schema";
@@ -161,6 +163,7 @@ const sqliteAppTables = tablesFrom(
   sqliteSam,
   sqliteBilling,
   sqliteGa4,
+  sqliteYoutube,
   sqliteGsc,
   sqliteTelemetry,
   sqliteAiVisibility,
@@ -175,6 +178,7 @@ const pgAppTables = tablesFrom(
   pgSam,
   pgBilling,
   pgGa4,
+  pgYoutube,
   pgGsc,
   pgTelemetry,
   pgAiVisibility,

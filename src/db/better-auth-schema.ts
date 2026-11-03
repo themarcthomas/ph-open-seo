@@ -1,4 +1,5 @@
 import { relations, sql } from "drizzle-orm";
+import { googleDataGrantWhere } from "./google-data-grants";
 import {
   sqliteTable,
   text,
@@ -94,9 +95,7 @@ export const account = sqliteTable(
     ),
     uniqueIndex("account_google_grant_owner_idx")
       .on(table.userId, table.providerId, table.accountId)
-      .where(
-        sql`${table.providerId} in ('google-search-console', 'google-analytics')`,
-      ),
+      .where(googleDataGrantWhere(sql`${table.providerId}`)),
   ],
 );
 

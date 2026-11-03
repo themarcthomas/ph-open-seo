@@ -3,11 +3,13 @@ import { useSyncExternalStore } from "react";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { startGa4Link } from "@/serverFunctions/ga4";
 import { startGscLink } from "@/serverFunctions/gsc";
+import { startYoutubeLink } from "@/serverFunctions/youtube";
 import type { GoogleLinkProvider } from "@/shared/google-link";
 
 const startLink: Record<GoogleLinkProvider, typeof startGscLink> = {
   gsc: startGscLink,
   ga4: startGa4Link,
+  youtube: startYoutubeLink,
 };
 
 // One link flow at a time: a double-click, or a second Connect click while the

@@ -1,14 +1,21 @@
 import { DashboardCacheService } from "@/server/features/dashboard/services/DashboardCacheService";
 import { GA4_OAUTH_PROVIDER_ID } from "@/shared/ga4";
 import { GSC_OAUTH_PROVIDER_ID } from "@/shared/gsc";
+import { YOUTUBE_OAUTH_PROVIDER_ID } from "@/shared/youtube";
 import { GoogleAccountRepository } from "./GoogleAccountRepository";
 import { getGoogleAccessToken, revokeGoogleToken } from "./googleOAuth";
 
 type AccountInput = {
   userId: string;
-  provider: "gsc" | "ga4";
+  provider: "gsc" | "ga4" | "youtube";
   accountId: string;
 };
+
+const PROVIDER_IDS = {
+  gsc: GSC_OAUTH_PROVIDER_ID,
+  ga4: GA4_OAUTH_PROVIDER_ID,
+  youtube: YOUTUBE_OAUTH_PROVIDER_ID,
+} as const;
 
 async function getRemovalImpact(input: AccountInput) {
   return GoogleAccountRepository.getRemovalImpact(input);
@@ -44,8 +51,7 @@ async function remove(input: AccountInput) {
   // for another OpenSEO user; it does not delete Google sign-in or other scopes.
   const token = await tokenForRevocation({
     userId: input.userId,
-    providerId:
-      input.provider === "gsc" ? GSC_OAUTH_PROVIDER_ID : GA4_OAUTH_PROVIDER_ID,
+    providerId: PROVIDER_IDS[input.provider],
     accountId: input.accountId,
   });
   const gscProjectIds =

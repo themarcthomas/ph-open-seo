@@ -16,6 +16,9 @@ export const Route = createFileRoute(
     void queryClient.prefetchQuery(
       googleConnectionOptions("ga4", params.projectId),
     );
+    void queryClient.prefetchQuery(
+      googleConnectionOptions("youtube", params.projectId),
+    );
   },
   component: ProjectIntegrationsRoute,
 });
@@ -34,6 +37,10 @@ function ProjectIntegrationsRoute() {
 
       <section id="google-analytics" className="scroll-mt-6">
         <GoogleConnectionCard provider="ga4" projectId={projectId} />
+      </section>
+
+      <section id="youtube" className="scroll-mt-6">
+        <GoogleConnectionCard provider="youtube" projectId={projectId} />
       </section>
 
       <IndexNowSettings projectId={projectId} />
