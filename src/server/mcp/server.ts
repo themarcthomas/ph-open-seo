@@ -57,6 +57,7 @@ import {
 } from "@/server/mcp/tools/google-analytics-tools";
 import {
   getYoutubeChannelOverviewTool,
+  getYoutubeOpportunitiesTool,
   getYoutubeSearchTermsTool,
   getYoutubeTopVideosTool,
   getYoutubeTrafficSourcesTool,
@@ -324,6 +325,7 @@ export function registerOpenSeoTools(
   register(getYoutubeTrafficSourcesTool);
   register(getYoutubeSearchTermsTool);
   register(getYoutubeVideoStatsTool);
+  register(getYoutubeOpportunitiesTool);
   register(runSiteAuditTool);
   register(listSiteAuditsTool);
   register(deleteSiteAuditTool);

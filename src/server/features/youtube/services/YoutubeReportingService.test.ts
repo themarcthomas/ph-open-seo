@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { YoutubeReportError } from "@/server/lib/youtubeErrors";
+import { YoutubeReportService } from "./youtubeChannelReport";
 import { YoutubeReportingService } from "./YoutubeReportingService";
 
 const mocks = vi.hoisted(() => ({
@@ -23,6 +24,10 @@ vi.mock(
     },
   }),
 );
+vi.mock("@/server/features/gsc/services/GscService", () => ({
+  GscService: { getPerformance: vi.fn(async () => ({ rows: [] })) },
+  GscNotConnectedError: class GscNotConnectedError extends Error {},
+}));
 
 const connection = {
   projectId: "p1",
@@ -186,6 +191,84 @@ describe("YoutubeReportingService", () => {
       ["abcdefghijk", "Launch", 3],
       ["zzzzzzzzzzz", null, 1],
     ]);
+  });
+
+  it("asks for a daily series and the previous period of the top videos", async () => {
+    mocks.queryReport.mockImplementation(
+      async (query: {
+        dimensions?: readonly string[];
+        filters?: readonly string[];
+      }) => {
+        const dimensions = query.dimensions ?? [];
+        if (dimensions.includes("day")) {
+          return [
+            {
+              day: "2026-04-02",
+              views: 5,
+              estimatedMinutesWatched: 8,
+            },
+          ];
+        }
+        if (dimensions.includes("insightTrafficSourceType")) return [];
+        if (dimensions[0] === "video" && query.filters?.length) {
+          return [{ video: "abcdefghijk", views: 4 }];
+        }
+        if (dimensions[0] === "video") {
+          return [
+            {
+              video: "abcdefghijk",
+              views: 10,
+              estimatedMinutesWatched: 20,
+              averageViewDuration: 90,
+              subscribersGained: 1,
+              subscribersLost: 0,
+              likes: 0,
+              comments: 0,
+              shares: 0,
+            },
+          ];
+        }
+        return [];
+      },
+    );
+    mocks.listVideoTitles.mockResolvedValue(
+      new Map([["abcdefghijk", "Launch"]]),
+    );
+
+    const result = await YoutubeReportService.getReport({
+      projectId: "p1",
+      startDate: "2026-04-01",
+      endDate: "2026-04-03",
+    });
+
+    expect(mocks.queryReport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dimensions: ["day"],
+        metrics: ["views", "estimatedMinutesWatched"],
+        sort: "day",
+        startDate: "2026-04-01",
+        endDate: "2026-04-03",
+      }),
+    );
+    expect(mocks.queryReport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dimensions: ["video"],
+        filters: ["video==abcdefghijk"],
+        startDate: "2026-03-29",
+        endDate: "2026-03-31",
+      }),
+    );
+    expect(result.daily).toEqual([
+      { day: "2026-04-01", views: 0, estimatedMinutesWatched: 0 },
+      { day: "2026-04-02", views: 5, estimatedMinutesWatched: 8 },
+      { day: "2026-04-03", views: 0, estimatedMinutesWatched: 0 },
+    ]);
+    expect(result.videos[0]).toMatchObject({
+      videoId: "abcdefghijk",
+      title: "Launch",
+      views: 10,
+      previousViews: 4,
+    });
   });
 
   it("refuses video titles when the Data API scope was not granted", async () => {
