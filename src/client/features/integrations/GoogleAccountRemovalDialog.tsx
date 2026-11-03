@@ -22,7 +22,7 @@ export function GoogleAccountRemovalDialog({
   onClose,
   onRemoved,
 }: {
-  provider: "gsc" | "ga4";
+  provider: "gsc" | "ga4" | "youtube";
   accountId: string;
   label: string;
   onClose: () => void;
@@ -52,12 +52,14 @@ export function GoogleAccountRemovalDialog({
               "dashboardGscReport",
               "dashboardActivation",
             ]
-          : [
-              "ga4Connection",
-              "ga4Properties",
-              "dashboardGa4Report",
-              "dashboardActivation",
-            ];
+          : provider === "ga4"
+            ? [
+                "ga4Connection",
+                "ga4Properties",
+                "dashboardGa4Report",
+                "dashboardActivation",
+              ]
+            : ["youtubeConnection", "youtubeChannels"];
       await Promise.all(
         keys.map((key) => queryClient.invalidateQueries({ queryKey: [key] })),
       );
@@ -65,7 +67,12 @@ export function GoogleAccountRemovalDialog({
       onRemoved();
     },
   });
-  const name = provider === "gsc" ? "Search Console" : "Google Analytics";
+  const name =
+    provider === "gsc"
+      ? "Search Console"
+      : provider === "ga4"
+        ? "Google Analytics"
+        : "YouTube";
   return (
     <Dialog
       open

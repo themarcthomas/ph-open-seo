@@ -23,6 +23,12 @@ import {
   GSC_OAUTH_SCOPES,
 } from "@/shared/gsc";
 import {
+  YOUTUBE_ANALYTICS_SCOPE,
+  YOUTUBE_DATA_SCOPE,
+  YOUTUBE_OAUTH_PROVIDER_ID,
+  YOUTUBE_OAUTH_SCOPES,
+} from "@/shared/youtube";
+import {
   getGoogleOAuthClientConfig,
   hasGoogleOAuthConfig,
 } from "./oauth-config";
@@ -36,7 +42,7 @@ import {
 import { ownGoogleCallbackDisabled } from "./googleAccess";
 
 /**
- * Google data grants (Search Console, Analytics) are linked here rather than
+ * Google data grants (Search Console, Analytics, YouTube) are linked here rather than
  * through Better Auth's generic-oauth plugin. Better Auth treats every linked
  * provider account as a login identity and refuses to link one Google account
  * to a second user, which blocked agencies and multi-member orgs from each
@@ -63,6 +69,12 @@ export type GoogleOAuthIntegration = {
   scopes: readonly string[];
   /** The data permission the integration can't work without. */
   requiredScope: string;
+  /**
+   * Every scope that must be present when Google returns a scope list.
+   * Defaults to `requiredScope`. An omitted scope list means Google granted
+   * everything that was requested.
+   */
+  requiredScopes?: readonly string[];
 };
 
 export const GSC_INTEGRATION: GoogleOAuthIntegration = {
@@ -81,6 +93,16 @@ export const GA4_INTEGRATION: GoogleOAuthIntegration = {
   callbackPath: "/api/ga4/oauth/callback",
   scopes: GA4_OAUTH_SCOPES,
   requiredScope: GA4_DATA_SCOPE,
+};
+
+export const YOUTUBE_INTEGRATION: GoogleOAuthIntegration = {
+  provider: "youtube",
+  providerId: YOUTUBE_OAUTH_PROVIDER_ID,
+  displayName: "YouTube",
+  callbackPath: "/api/youtube/oauth/callback",
+  scopes: YOUTUBE_OAUTH_SCOPES,
+  requiredScope: YOUTUBE_ANALYTICS_SCOPE,
+  requiredScopes: [YOUTUBE_ANALYTICS_SCOPE, YOUTUBE_DATA_SCOPE],
 };
 
 const googleTokenResponseSchema = z.object({
@@ -166,7 +188,7 @@ async function upsertGrant(input: {
     })
     .onConflictDoUpdate({
       target: [account.userId, account.providerId, account.accountId],
-      targetWhere: sql`${account.providerId} in ('google-search-console', 'google-analytics')`,
+      targetWhere: sql`${account.providerId} in ('google-search-console', 'google-analytics', 'google-youtube')`,
       set: {
         ...accountValues,
         // Google may omit the refresh token on a later consent. Keep the
@@ -293,13 +315,16 @@ async function handleGoogleOAuthCallback(input: {
     return fail("oauth_code_verification_failed");
   }
   if (!tokens) return fail("oauth_code_verification_failed");
-  // Google's consent screen lets the user approve sign-in while leaving the
-  // Search Console or Analytics box unchecked. That grant gets a 403 on every
-  // API call, so send them back to check it rather than saving it. An omitted
-  // scope means everything requested was granted.
+  // Google's consent screen lets the user approve sign-in while leaving a
+  // product box unchecked. That grant gets a 403 on every API call, so send
+  // them back to check it rather than saving it. An omitted scope means
+  // everything requested was granted.
+  const requiredScopes = input.integration.requiredScopes ?? [
+    input.integration.requiredScope,
+  ];
   if (
     tokens.scope &&
-    !tokens.scope.split(/\s+/).includes(input.integration.requiredScope)
+    requiredScopes.some((scope) => !tokens.scope?.split(/\s+/).includes(scope))
   ) {
     return fail("scope_not_granted");
   }

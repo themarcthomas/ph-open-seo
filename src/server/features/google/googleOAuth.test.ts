@@ -71,6 +71,14 @@ beforeAll(async () => {
       sql.includes("CREATE UNIQUE INDEX"),
     ),
   );
+  // The YouTube grant widens the same partial index. Recreate it here so
+  // callback upserts match the predicate the application writes.
+  await client.executeMultiple(`
+    DROP INDEX IF EXISTS account_google_grant_owner_idx;
+    CREATE UNIQUE INDEX account_google_grant_owner_idx
+      ON account (user_id, provider_id, account_id)
+      WHERE "account"."provider_id" in ('google-search-console', 'google-analytics', 'google-youtube');
+  `);
   oauth = await import("./googleOAuth");
 });
 

@@ -16,6 +16,7 @@ import {
   GA4_INTEGRATION,
   GSC_INTEGRATION,
   handleGoogleOAuthCallbackRequest,
+  YOUTUBE_INTEGRATION,
 } from "./googleOAuth";
 import {
   getGoogleOAuthClientConfig,
@@ -41,10 +42,14 @@ describe("Google behind an Every App gateway", () => {
     expect(await hasGoogleOAuthConfig()).toBe(false);
   });
 
-  it("answers OpenSEO's own Search Console and Analytics callbacks with 404", async () => {
+  it("answers OpenSEO's own Search Console, Analytics, and YouTube callbacks with 404", async () => {
     Object.assign(workerEnv, { AUTH_MODE: "everyapp", ...GOOGLE_CLIENT });
 
-    for (const integration of [GSC_INTEGRATION, GA4_INTEGRATION]) {
+    for (const integration of [
+      GSC_INTEGRATION,
+      GA4_INTEGRATION,
+      YOUTUBE_INTEGRATION,
+    ]) {
       const response = await handleGoogleOAuthCallbackRequest(
         new Request(
           `https://openseo.app.everyapp.com/api/${integration.provider}/oauth/callback?code=c&state=s`,

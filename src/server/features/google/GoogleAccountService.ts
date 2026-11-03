@@ -1,12 +1,13 @@
 import { DashboardCacheService } from "@/server/features/dashboard/services/DashboardCacheService";
 import { GA4_OAUTH_PROVIDER_ID } from "@/shared/ga4";
 import { GSC_OAUTH_PROVIDER_ID } from "@/shared/gsc";
+import { YOUTUBE_OAUTH_PROVIDER_ID } from "@/shared/youtube";
 import { GoogleAccountRepository } from "./GoogleAccountRepository";
 import { getGoogleAccessToken, revokeGoogleToken } from "./googleOAuth";
 
 type AccountInput = {
   userId: string;
-  provider: "gsc" | "ga4";
+  provider: "gsc" | "ga4" | "youtube";
   accountId: string;
 };
 
@@ -45,7 +46,11 @@ async function remove(input: AccountInput) {
   const token = await tokenForRevocation({
     userId: input.userId,
     providerId:
-      input.provider === "gsc" ? GSC_OAUTH_PROVIDER_ID : GA4_OAUTH_PROVIDER_ID,
+      input.provider === "gsc"
+        ? GSC_OAUTH_PROVIDER_ID
+        : input.provider === "ga4"
+          ? GA4_OAUTH_PROVIDER_ID
+          : YOUTUBE_OAUTH_PROVIDER_ID,
     accountId: input.accountId,
   });
   const gscProjectIds =

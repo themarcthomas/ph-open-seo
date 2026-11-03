@@ -76,6 +76,22 @@ beforeAll(async () => {
     );
   }
   await client.execute("ALTER TABLE gsc_connections ADD gsc_account_id text");
+  await client.executeMultiple(`
+    CREATE TABLE youtube_connections (
+      id text PRIMARY KEY NOT NULL,
+      project_id text NOT NULL,
+      organization_id text NOT NULL,
+      channel_id text NOT NULL,
+      channel_title text NOT NULL,
+      channel_custom_url text,
+      channel_thumbnail_url text,
+      connected_by_user_id text NOT NULL,
+      youtube_account_id text NOT NULL,
+      connected_account_email text,
+      created_at text DEFAULT (current_timestamp) NOT NULL,
+      updated_at text DEFAULT (current_timestamp) NOT NULL
+    );
+  `);
   ({ GoogleAccountService: service } = await import("./GoogleAccountService"));
 });
 
@@ -88,7 +104,7 @@ beforeEach(async () => {
     async ({ accountId }: { accountId: string }) => `token-${accountId}`,
   );
   await client.executeMultiple(
-    "DROP TRIGGER IF EXISTS fail_remove; DELETE FROM gsc_connections; DELETE FROM ga4_connections; DELETE FROM account;",
+    "DROP TRIGGER IF EXISTS fail_remove; DELETE FROM gsc_connections; DELETE FROM ga4_connections; DELETE FROM youtube_connections; DELETE FROM account;",
   );
 });
 
@@ -110,7 +126,7 @@ async function grant(
   });
 }
 async function mapping(
-  provider: "gsc" | "ga4",
+  provider: "gsc" | "ga4" | "youtube",
   projectId: string,
   accountId: string | null = "google-a",
   userId = "u1",
@@ -126,7 +142,7 @@ async function mapping(
         accountId,
       ],
     });
-  else
+  else if (provider === "ga4")
     await client.execute({
       sql: "INSERT INTO ga4_connections (id, project_id, organization_id, property_id, property_display_name, property_time_zone, property_currency_code, connected_by_user_id, ga4_account_id) VALUES (?, ?, ?, 'properties/123', 'Example', 'UTC', 'USD', ?, ?)",
       args: [
@@ -137,8 +153,25 @@ async function mapping(
         accountId,
       ],
     });
+  else
+    await client.execute({
+      sql: "INSERT INTO youtube_connections (id, project_id, organization_id, channel_id, channel_title, connected_by_user_id, youtube_account_id) VALUES (?, ?, ?, 'UCbrandchannel0000000001', 'Brand', ?, ?)",
+      args: [
+        projectId,
+        projectId,
+        projectId === "p2" ? "org2" : "org1",
+        userId,
+        accountId,
+      ],
+    });
 }
-async function rows(table: "account" | "gsc_connections" | "ga4_connections") {
+async function rows(
+  table:
+    | "account"
+    | "gsc_connections"
+    | "ga4_connections"
+    | "youtube_connections",
+) {
   return (await client.execute(`SELECT * FROM ${table} ORDER BY id`)).rows;
 }
 
@@ -300,5 +333,56 @@ it("purges and revokes grants no project uses that were last updated before the 
     "recent",
     "mapped",
   ]);
+  expect(oauth.revokeGoogleToken.mock.calls).toEqual([["token-unused"]]);
+});
+
+it("removes a YouTube channel mapping without deleting Search Console or Analytics grants", async () => {
+  await grant("google-youtube");
+  await grant("google-search-console");
+  await grant("google-analytics");
+  await mapping("youtube", "p1");
+  await mapping("gsc", "p3");
+  await mapping("ga4", "p4");
+  await service.remove({
+    provider: "youtube",
+    accountId: "google-a",
+    userId: "u1",
+  });
+  expect(await rows("youtube_connections")).toEqual([]);
+  expect(await rows("gsc_connections")).toHaveLength(1);
+  expect(await rows("ga4_connections")).toHaveLength(1);
+  const providers = (await rows("account")).map((row) => row.provider_id);
+  expect(providers).toHaveLength(2);
+  expect(providers).toEqual(
+    expect.arrayContaining(["google-analytics", "google-search-console"]),
+  );
+  expect(oauth.revokeGoogleToken).not.toHaveBeenCalled();
+});
+
+it("keeps the Google token while a YouTube grant for that account remains", async () => {
+  await grant("google-search-console");
+  await grant("google-analytics");
+  await grant("google-youtube");
+  const input = {
+    accountId: "google-a",
+    userId: "u1",
+  };
+  await service.remove({ ...input, provider: "gsc" });
+  await service.remove({ ...input, provider: "ga4" });
+  expect(oauth.revokeGoogleToken).not.toHaveBeenCalled();
+  await service.remove({ ...input, provider: "youtube" });
+  expect(oauth.revokeGoogleToken.mock.calls).toEqual([["token-google-a"]]);
+});
+
+it("purges an unused YouTube grant and keeps one a project still uses", async () => {
+  await grant("google-youtube", "unused");
+  await grant("google-youtube", "mapped");
+  await grant("google-analytics", "analytics", "u1", 2_000);
+  await mapping("youtube", "p1", "mapped");
+  expect(await service.purgeUnusedGrants(new Date(1_000))).toBe(1);
+  const remaining = (await rows("account")).map((row) => row.account_id);
+  expect(remaining).toHaveLength(2);
+  expect(remaining).toEqual(expect.arrayContaining(["analytics", "mapped"]));
+  expect(await rows("youtube_connections")).toHaveLength(1);
   expect(oauth.revokeGoogleToken.mock.calls).toEqual([["token-unused"]]);
 });
