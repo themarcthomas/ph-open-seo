@@ -1,5 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import { YoutubeReportService } from "@/server/features/youtube/services/youtubeChannelReport";
 import { YoutubeReportingService } from "@/server/features/youtube/services/YoutubeReportingService";
 import { YoutubeReportError } from "@/server/lib/youtubeErrors";
 import { buildProjectMeta } from "@/server/mcp/context";
@@ -330,6 +331,57 @@ const videoInputSchema = z.strictObject({
     .regex(/^[A-Za-z0-9_-]{11}$/)
     .describe("11-character YouTube video id."),
 });
+
+const opportunitiesOutputSchema = envelope({
+  source: looseObjectOutputSchema,
+  request: looseObjectOutputSchema,
+  searchConsole: z.enum(["connected", "not_connected", "unavailable"]),
+  embeddingPages: z.enum(["available", "unavailable"]),
+  opportunities: z.array(z.record(z.string(), z.unknown())),
+});
+
+export const getYoutubeOpportunitiesTool = {
+  name: "get_youtube_opportunities",
+  config: {
+    title: "Get YouTube opportunities",
+    description: `Rule-based ideas for the connected channel: high-retention videos with few views to promote, videos losing views, YouTube search terms with no matching video, Google queries that suggest a video when Search Console is connected, and videos with heavy external traffic plus the pages that embed the channel when YouTube returns them. Each idea includes the numbers behind it. ${sharedDescription}`,
+    inputSchema: z.strictObject(rangeSchema),
+    outputSchema: opportunitiesOutputSchema,
+    annotations: readOnly,
+  },
+  handler: withMcpProjectAuth(async (args, context) => {
+    try {
+      const result = await YoutubeReportService.getReport(args);
+      const lines =
+        result.opportunities.length === 0
+          ? "No YouTube opportunities in this range."
+          : result.opportunities
+              .map((item) => {
+                const evidence = item.evidence
+                  .map(
+                    (entry) => `${entry.label}: ${formatMcpCell(entry.value)}`,
+                  )
+                  .join("; ");
+                return `${item.headline} ${evidence}`;
+              })
+              .join("\n");
+      return mcpResponse({
+        text: `YouTube opportunities for ${result.source.channelTitle}, ${rangeLabel(result.request)}. Search Console: ${result.searchConsole}. Embedding pages: ${result.embeddingPages}.\n${lines}`,
+        meta: buildProjectMeta(context, args.projectId),
+        structuredContent: {
+          status: "ok" as const,
+          source: result.source,
+          request: result.request,
+          searchConsole: result.searchConsole,
+          embeddingPages: result.embeddingPages,
+          opportunities: result.opportunities,
+        },
+      });
+    } catch (error) {
+      return errorResponse(args, context, error);
+    }
+  }),
+};
 
 export const getYoutubeVideoStatsTool = {
   name: "get_youtube_video_stats",

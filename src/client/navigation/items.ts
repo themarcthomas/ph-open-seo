@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Search,
   TrendingUp,
+  Youtube,
 } from "lucide-react";
 import { linkOptions } from "@tanstack/react-router";
 import { GoogleGlyphMuted } from "@/client/features/gsc/GoogleGlyph";
@@ -49,6 +50,11 @@ const projectNavItems = [
     to: "/p/$projectId/search-performance" as const,
     label: "GSC Insights",
     icon: GoogleGlyphMuted,
+  },
+  {
+    to: "/p/$projectId/youtube" as const,
+    label: "YouTube",
+    icon: Youtube,
   },
   {
     to: "/p/$projectId/domain" as const,
@@ -120,10 +126,21 @@ function getProjectNavItems(projectId: string) {
 
 // Grouped by scope: "My Site" is the project's own domain (tracked data),
 // "Research" is point-at-anything lookup tools.
-export function getProjectNavGroups(projectId: string) {
+export function getProjectNavGroups(
+  projectId: string,
+  options?: { youtubeConnected?: boolean },
+) {
   const all = getProjectNavItems(projectId);
   const byPath = (path: (typeof projectNavItems)[number]["to"]) =>
     all.find((i) => i.to === path)!;
+  const mySite = [
+    byPath("/p/$projectId/search-performance"),
+    ...(options?.youtubeConnected ? [byPath("/p/$projectId/youtube")] : []),
+    byPath("/p/$projectId/rank-tracking"),
+    byPath("/p/$projectId/local-seo"),
+    byPath("/p/$projectId/saved"),
+    byPath("/p/$projectId/audit"),
+  ];
 
   return [
     {
@@ -148,13 +165,7 @@ export function getProjectNavGroups(projectId: string) {
     },
     {
       label: "My Site",
-      items: [
-        byPath("/p/$projectId/search-performance"),
-        byPath("/p/$projectId/rank-tracking"),
-        byPath("/p/$projectId/local-seo"),
-        byPath("/p/$projectId/saved"),
-        byPath("/p/$projectId/audit"),
-      ],
+      items: mySite,
     },
     {
       label: "AI Tools",

@@ -5,7 +5,10 @@ import {
 } from "@/server/features/ga4/services/Ga4Dates";
 import type { YoutubeReportRow } from "@/server/lib/youtubeClient";
 import { YoutubeReportError } from "@/server/lib/youtubeErrors";
-import { YOUTUBE_REPORTING_TIME_ZONE } from "@/shared/youtube";
+import {
+  YOUTUBE_REPORTING_TIME_ZONE,
+  type YoutubeReportRange,
+} from "@/shared/youtube";
 
 export const YOUTUBE_OVERVIEW_METRICS = [
   "views",
@@ -61,6 +64,34 @@ function previousWindow(startDate: string, endDate: string) {
   return { previousStartDate, previousEndDate };
 }
 
+function shiftCalendarMonths(value: string, months: number): string {
+  const [year, month, day] = value.split("-").map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1 + months, 1));
+  const daysInMonth = new Date(
+    Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  shifted.setUTCDate(Math.min(day, daysInMonth));
+  return shifted.toISOString().slice(0, 10);
+}
+
+/** Last complete days in America/Los_Angeles. `last_3_months` is three calendar months back from yesterday. */
+export function resolveYoutubePreset(
+  range: YoutubeReportRange,
+  now = new Date(),
+): YoutubeDateRange {
+  const endDate = shiftGa4Date(
+    ga4DateInTimeZone(now, YOUTUBE_REPORTING_TIME_ZONE),
+    -1,
+  );
+  const startDate =
+    range === "last_7_days"
+      ? shiftGa4Date(endDate, -6)
+      : range === "last_3_months"
+        ? shiftCalendarMonths(endDate, -3)
+        : shiftGa4Date(endDate, -(DEFAULT_RANGE_DAYS - 1));
+  return { startDate, endDate, ...previousWindow(startDate, endDate) };
+}
+
 export function resolveYoutubeRange(
   input: { startDate?: string; endDate?: string },
   now = new Date(),
@@ -74,12 +105,7 @@ export function resolveYoutubeRange(
     );
   }
   if (!input.startDate || !input.endDate) {
-    const endDate = shiftGa4Date(
-      ga4DateInTimeZone(now, YOUTUBE_REPORTING_TIME_ZONE),
-      -1,
-    );
-    const startDate = shiftGa4Date(endDate, -(DEFAULT_RANGE_DAYS - 1));
-    return { startDate, endDate, ...previousWindow(startDate, endDate) };
+    return resolveYoutubePreset("last_28_days", now);
   }
   if (!isRealDate(input.startDate) || !isRealDate(input.endDate)) {
     throw new YoutubeReportError(
@@ -154,6 +180,24 @@ function compareMetric(
     absoluteChange: current - previous,
     percentChange,
   };
+}
+
+function subscriberNet(metrics: YoutubeMetrics | null): number | null {
+  if (
+    !metrics ||
+    metrics.subscribersGained === null ||
+    metrics.subscribersLost === null
+  ) {
+    return null;
+  }
+  return metrics.subscribersGained - metrics.subscribersLost;
+}
+
+export function compareSubscriberNet(
+  current: YoutubeMetrics | null,
+  previous: YoutubeMetrics | null,
+) {
+  return compareMetric(subscriberNet(current), subscriberNet(previous));
 }
 
 export function compareMetrics(

@@ -21,6 +21,7 @@ import {
   connectNavGroup,
   getProjectNavGroups,
 } from "@/client/navigation/items";
+import { googleConnectionOptions } from "@/client/features/integrations/googleProviders";
 import { ProjectSwitcher } from "@/client/features/projects/ProjectSwitcher";
 import {
   SamChatListSkeleton,
@@ -131,9 +132,15 @@ export function Sidebar({
   // the sidebar has its full shape from the first paint instead of growing
   // once projects load. The placeholder rows never render these links.
   const navPlaceholder = projectId === null && projectPending;
+  const youtubeQuery = useQuery({
+    ...googleConnectionOptions("youtube", projectId ?? "none"),
+    enabled: ready && projectId !== null,
+  });
   const navGroups =
     projectId !== null || navPlaceholder
-      ? getProjectNavGroups(projectId ?? "")
+      ? getProjectNavGroups(projectId ?? "", {
+          youtubeConnected: youtubeQuery.data?.connected === true,
+        })
       : [connectNavGroup];
   const { pathname } = useLocation();
   const { setOpenMobile } = useSidebar();

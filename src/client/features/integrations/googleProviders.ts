@@ -248,7 +248,10 @@ export const googleProviders: Record<GoogleProvider, ProviderConfig> = {
       };
     },
     disconnect: (projectId) => disconnectYoutube({ data: { projectId } }),
-    dependentKeys: (projectId) => [["youtubeChannels", projectId]],
+    dependentKeys: (projectId) => [
+      ["youtubeChannels", projectId],
+      ["youtubeReport", projectId],
+    ],
   },
 };
 

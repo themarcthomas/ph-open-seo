@@ -28,12 +28,14 @@ import {
   YOUTUBE_ANALYTICS_SCOPE,
   YOUTUBE_DATA_SCOPE,
   YOUTUBE_REPORTING_TIME_ZONE,
+  type YoutubeReportRange,
 } from "@/shared/youtube";
 
-type ReportInput = {
+export type ReportInput = {
   projectId: string;
   startDate?: string;
   endDate?: string;
+  dateRange?: YoutubeReportRange;
   limit?: number;
 };
 
@@ -45,7 +47,7 @@ type Ready = {
   scope: string | null;
 };
 
-async function callReport(
+export async function callReport(
   client: YoutubeClient,
   query: YoutubeReportQuery,
 ): Promise<YoutubeReportRow[]> {
@@ -68,7 +70,7 @@ async function callReport(
   }
 }
 
-async function ready(projectId: string): Promise<Ready> {
+export async function ready(projectId: string): Promise<Ready> {
   const connection =
     await YoutubeConnectionRepository.getByProjectId(projectId);
   if (!connection) {
@@ -110,7 +112,7 @@ async function ready(projectId: string): Promise<Ready> {
   };
 }
 
-function assertDataScope(context: Ready) {
+export function assertDataScope(context: Ready) {
   if (
     context.enforceDataScope &&
     grantOmitsScope(context.scope, YOUTUBE_DATA_SCOPE)
@@ -170,7 +172,7 @@ async function getChannelOverview(input: ReportInput) {
   };
 }
 
-async function titledRows(context: Ready, rows: YoutubeReportRow[]) {
+export async function titledRows(context: Ready, rows: YoutubeReportRow[]) {
   assertDataScope(context);
   const videoIds = rows
     .map((row) => row.video)
@@ -239,10 +241,12 @@ async function getTopVideos(input: ReportInput) {
   };
 }
 
-async function dimensionReport(
+async function dimensionReport<
+  Row extends Record<string, string | number | null>,
+>(
   input: ReportInput,
   query: Pick<YoutubeReportQuery, "dimensions" | "filters" | "sort">,
-  mapRow: (row: YoutubeReportRow) => Record<string, string | number | null>,
+  mapRow: (row: YoutubeReportRow) => Row,
 ) {
   const context = await ready(input.projectId);
   const range = resolveYoutubeRange(input);
