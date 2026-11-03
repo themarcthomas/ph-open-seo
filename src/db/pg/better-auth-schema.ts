@@ -86,7 +86,7 @@ export const account = pgTable(
     uniqueIndex("account_google_grant_owner_idx")
       .on(table.userId, table.providerId, table.accountId)
       .where(
-        sql`${table.providerId} in ('google-search-console', 'google-analytics')`,
+        sql`${table.providerId} in ('google-search-console', 'google-analytics', 'google-youtube')`,
       ),
   ],
 );

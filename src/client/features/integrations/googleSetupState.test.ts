@@ -18,6 +18,13 @@ vi.mock("@/serverFunctions/ga4", () => ({
   setGa4Property: vi.fn(),
   disconnectGa4: vi.fn(),
 }));
+vi.mock("@/serverFunctions/youtube", () => ({
+  getYoutubeConnection: vi.fn(),
+  listYoutubeChannels: vi.fn(),
+  setYoutubeChannel: vi.fn(),
+  disconnectYoutube: vi.fn(),
+  startYoutubeLink: vi.fn(),
+}));
 vi.mock("@/serverFunctions/projects", () => ({ getProjects: vi.fn() }));
 vi.mock("@/serverFunctions/googleAccounts", () => ({
   getGoogleAccountRemovalImpact: vi.fn(),

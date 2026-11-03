@@ -10,6 +10,7 @@ export function GoogleConnectedState({
   canManage,
   canManageAccounts,
   disabled,
+  changeLabel = "Change property or account",
 }: {
   property: string;
   detail?: string | null;
@@ -20,6 +21,7 @@ export function GoogleConnectedState({
   canManage: boolean;
   canManageAccounts: boolean;
   disabled: boolean;
+  changeLabel?: string;
 }) {
   return (
     <div className="space-y-4">
@@ -44,9 +46,7 @@ export function GoogleConnectedState({
           className="flex flex-wrap items-center gap-1"
         >
           <Button variant="outline" size="sm" onClick={onChange}>
-            {canManage
-              ? "Change property or account"
-              : "Manage Google accounts"}
+            {canManage ? changeLabel : "Manage Google accounts"}
           </Button>
           {canManage ? (
             <Button variant="destructive" size="sm" onClick={onDisconnect}>

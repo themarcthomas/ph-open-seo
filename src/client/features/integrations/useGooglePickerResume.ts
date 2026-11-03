@@ -4,9 +4,11 @@ import {
   useGoogleLinkPending,
 } from "@/client/features/integrations/startGoogleLink";
 
+import type { GoogleLinkProvider } from "@/shared/google-link";
+
 /** Restore the picker after Google's full-page redirect, scoped to this project. */
 export function useGooglePickerResume(
-  provider: "gsc" | "ga4",
+  provider: GoogleLinkProvider,
   projectId: string,
 ) {
   // null lets the card derive unfinished setup from the saved authorization.

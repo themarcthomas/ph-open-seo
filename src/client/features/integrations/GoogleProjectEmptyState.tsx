@@ -10,6 +10,8 @@ export function GoogleProjectEmptyState({
   prominent,
   onChoose,
   onLink,
+  choosePrompt,
+  chooseLabel = "Choose property",
   children,
 }: {
   name: string;
@@ -19,13 +21,16 @@ export function GoogleProjectEmptyState({
   prominent?: boolean;
   onChoose: () => void;
   onLink: () => void;
+  choosePrompt?: string;
+  chooseLabel?: string;
   children?: ReactNode;
 }) {
   return (
     <div className="flex flex-1 flex-col gap-4">
       <p className="text-sm text-muted-foreground">
         {hasGrant
-          ? `Choose a ${name} property to finish connecting this project.`
+          ? (choosePrompt ??
+            `Choose a ${name} property to finish connecting this project.`)
           : `Connect ${name} to see this project’s data.`}
       </p>
       {/* Actions sit bottom-right, with Dismiss (children) just left of the
@@ -52,7 +57,7 @@ export function GoogleProjectEmptyState({
               ? "Opening Google…"
               : canManage
                 ? hasGrant
-                  ? "Choose property"
+                  ? chooseLabel
                   : "Connect"
                 : "Manage Google accounts"}
           </Button>

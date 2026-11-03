@@ -6,6 +6,7 @@ import type {
 import {
   GoogleAnalyticsLogo,
   GoogleSearchConsoleLogo,
+  YouTubeLogo,
 } from "@/client/features/integrations/GoogleProductLogos";
 import {
   disconnectGa4,
@@ -19,10 +20,18 @@ import {
   listGscSites,
   setGscSite,
 } from "@/serverFunctions/gsc";
+import {
+  disconnectYoutube,
+  getYoutubeConnection,
+  listYoutubeChannels,
+  setYoutubeChannel,
+} from "@/serverFunctions/youtube";
 import { GA4_SELF_HOSTED_SETUP_DOCS_URL } from "@/shared/ga4";
 import { GSC_SELF_HOSTED_SETUP_DOCS_URL } from "@/shared/gsc";
+import { YOUTUBE_SELF_HOSTED_SETUP_DOCS_URL } from "@/shared/youtube";
+import type { GoogleLinkProvider } from "@/shared/google-link";
 
-export type GoogleProvider = "gsc" | "ga4";
+export type GoogleProvider = GoogleLinkProvider;
 
 /** One project's connection to a Google product, in the same shape for both. */
 export type GoogleConnection = {
@@ -45,6 +54,10 @@ type ProviderConfig = {
   name: string;
   Logo: typeof GoogleSearchConsoleLogo;
   docsUrl: string;
+  choosePrompt?: string;
+  chooseLabel?: string;
+  saveLabel?: string;
+  changeLabel?: string;
   getConnection: (projectId: string) => Promise<GoogleConnection>;
   accountsKey: string;
   listAccounts: (projectId: string) => Promise<PickerOptions>;
@@ -59,6 +72,9 @@ type ProviderConfig = {
 
 type GscAccounts = Awaited<ReturnType<typeof listGscSites>>["accounts"];
 type Ga4Accounts = Awaited<ReturnType<typeof listGa4Properties>>["accounts"];
+type YoutubeAccounts = Awaited<
+  ReturnType<typeof listYoutubeChannels>
+>["accounts"];
 
 /** The saved property is preselected when the user reopens the picker. */
 function pickerOptions(accounts: GooglePickerAccount[]): PickerOptions {
@@ -99,6 +115,23 @@ function ga4PickerOptions(accounts: Ga4Accounts): PickerOptions {
         detail: `${property.accountDisplayName} · ${property.propertyId.replace(/^properties\//, "")}`,
         selectable: true,
         isSelected: property.isSelected,
+      })),
+    })),
+  );
+}
+
+function youtubePickerOptions(accounts: YoutubeAccounts): PickerOptions {
+  return pickerOptions(
+    accounts.map((account) => ({
+      ...account,
+      unavailable: account.propertiesUnavailable,
+      apiDisabled: account.apiDisabled,
+      properties: account.channels.map((channel) => ({
+        id: channel.channelId,
+        name: channel.title,
+        detail: channel.customUrl ?? channel.channelId,
+        selectable: true,
+        isSelected: channel.isSelected,
       })),
     })),
   );
@@ -176,6 +209,46 @@ export const googleProviders: Record<GoogleProvider, ProviderConfig> = {
       ["dashboardActivation", projectId],
       ["dashboardGa4Report", projectId],
     ],
+  },
+  youtube: {
+    title: "YouTube Analytics",
+    name: "YouTube",
+    Logo: YouTubeLogo,
+    docsUrl: YOUTUBE_SELF_HOSTED_SETUP_DOCS_URL,
+    choosePrompt: "Choose a YouTube channel to finish connecting this project.",
+    chooseLabel: "Choose channel",
+    saveLabel: "Save channel",
+    changeLabel: "Change channel or account",
+    getConnection: async (projectId) => {
+      const connection = await getYoutubeConnection({ data: { projectId } });
+      return {
+        ...connection,
+        property: connection.channelTitle,
+        propertyDetail: connection.channelCustomUrl ?? connection.channelId,
+      };
+    },
+    accountsKey: "youtubeChannels",
+    listAccounts: async (projectId) =>
+      youtubePickerOptions(
+        (await listYoutubeChannels({ data: { projectId } })).accounts,
+      ),
+    save: async (projectId, selection) => {
+      const saved = await setYoutubeChannel({
+        data: {
+          projectId,
+          accountId: selection.accountId,
+          channelId: selection.propertyId,
+        },
+      });
+      return {
+        connected: true,
+        connectedByEmail: saved.connectedByEmail,
+        property: saved.channelTitle,
+        propertyDetail: saved.channelCustomUrl ?? saved.channelId,
+      };
+    },
+    disconnect: (projectId) => disconnectYoutube({ data: { projectId } }),
+    dependentKeys: (projectId) => [["youtubeChannels", projectId]],
   },
 };
 

@@ -108,3 +108,63 @@ it("keeps one refreshable grant per user and Google identity without changing pr
     rmSync(directory, { recursive: true });
   }
 });
+
+it("keeps Search Console and Analytics grants when the owner index adds YouTube", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "youtube-grant-index-"));
+  const client = createClient({ url: `file:${join(directory, "test.db")}` });
+  try {
+    await client.executeMultiple(`
+      CREATE TABLE account (
+        id text PRIMARY KEY,
+        user_id text NOT NULL,
+        provider_id text NOT NULL,
+        account_id text NOT NULL,
+        access_token text,
+        refresh_token text,
+        updated_at integer NOT NULL
+      );
+      INSERT INTO account VALUES
+        ('gsc', 'user-1', 'google-search-console', 'google-1', 'access', 'refresh', 1),
+        ('ga4', 'user-1', 'google-analytics', 'google-1', 'access', 'refresh', 1);
+    `);
+    const previous = readFileSync(
+      "drizzle/sqlite/0050_famous_crystal.sql",
+      "utf8",
+    ).replaceAll("--> statement-breakpoint", "");
+    await client.executeMultiple(previous);
+    const widened = readFileSync(
+      "drizzle/sqlite/0063_youtube_connections.sql",
+      "utf8",
+    )
+      .split("--> statement-breakpoint")
+      .filter((statement) =>
+        statement.includes("account_google_grant_owner_idx"),
+      )
+      .join("\n");
+    await client.executeMultiple(widened);
+
+    const kept = await client.execute(
+      "SELECT provider_id FROM account ORDER BY provider_id",
+    );
+    expect(kept.rows.map((row) => row.provider_id)).toEqual([
+      "google-analytics",
+      "google-search-console",
+    ]);
+    await client.execute(
+      "INSERT INTO account VALUES ('yt', 'user-1', 'google-youtube', 'google-1', 'access', 'refresh', 1)",
+    );
+    await expect(
+      client.execute(
+        "INSERT INTO account VALUES ('yt-2', 'user-1', 'google-youtube', 'google-1', 'access', 'refresh', 2)",
+      ),
+    ).rejects.toThrow();
+    await expect(
+      client.execute(
+        "INSERT INTO account VALUES ('gsc-2', 'user-1', 'google-search-console', 'google-1', 'access', 'refresh', 2)",
+      ),
+    ).rejects.toThrow();
+  } finally {
+    client.close();
+    rmSync(directory, { recursive: true });
+  }
+});

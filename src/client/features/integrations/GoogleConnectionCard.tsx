@@ -25,8 +25,8 @@ import { useGooglePickerResume } from "@/client/features/integrations/useGoogleP
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 
 /**
- * Connects one project to Search Console or Google Analytics: link a Google
- * account, pick a property, change it, or disconnect.
+ * Connects one project to Search Console, Google Analytics, or YouTube: link a
+ * Google account, pick a property or channel, change it, or disconnect.
  */
 export function GoogleConnectionCard({
   provider,
@@ -193,6 +193,7 @@ export function GoogleConnectionCard({
           detail={connection?.propertyDetail}
           canManageAccounts={hasGrant}
           email={connection?.connectedByEmail}
+          changeLabel={config.changeLabel}
           onChange={startPicking}
           onDisconnect={() => {
             setPropertyMutation.reset();
@@ -215,6 +216,7 @@ export function GoogleConnectionCard({
             onSelect={setSelection}
             onSave={() => selection && setPropertyMutation.mutate(selection)}
             saving={setPropertyMutation.isPending}
+            saveLabel={config.saveLabel}
             secondaryAction={{
               label: "Cancel",
               disabled: setPropertyMutation.isPending,
@@ -238,6 +240,8 @@ export function GoogleConnectionCard({
           prominent={prominent}
           onLink={handleConnect}
           onChoose={startPicking}
+          choosePrompt={config.choosePrompt}
+          chooseLabel={config.chooseLabel}
         >
           {dismissButton}
         </GoogleProjectEmptyState>

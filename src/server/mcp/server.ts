@@ -55,6 +55,13 @@ import {
   getGoogleAnalyticsTrafficAcquisitionTool,
   getSearchOpportunitiesTool,
 } from "@/server/mcp/tools/google-analytics-tools";
+import {
+  getYoutubeChannelOverviewTool,
+  getYoutubeSearchTermsTool,
+  getYoutubeTopVideosTool,
+  getYoutubeTrafficSourcesTool,
+  getYoutubeVideoStatsTool,
+} from "@/server/mcp/tools/youtube-tools";
 import { createProjectTool } from "@/server/mcp/tools/create-project";
 import {
   listGoogleAnalyticsPropertiesTool,
@@ -312,6 +319,11 @@ export function registerOpenSeoTools(
   register(getGoogleAnalyticsEcommercePerformanceTool);
   register(getGoogleAnalyticsSiteSearchTool);
   register(getGoogleAnalyticsAudienceBreakdownTool);
+  register(getYoutubeChannelOverviewTool);
+  register(getYoutubeTopVideosTool);
+  register(getYoutubeTrafficSourcesTool);
+  register(getYoutubeSearchTermsTool);
+  register(getYoutubeVideoStatsTool);
   register(runSiteAuditTool);
   register(listSiteAuditsTool);
   register(deleteSiteAuditTool);
@@ -338,7 +350,7 @@ export function createOpenSeoMcpServer(
       title: "OpenSEO",
       version: "0.0.12",
       description:
-        "SEO research tools for AI agents: keyword research and metrics, SERP and local SERP results, domain and backlink analysis, rank tracking, and Google Search Console performance.",
+        "SEO research tools for AI agents: keyword research and metrics, SERP and local SERP results, domain and backlink analysis, rank tracking, Google Search Console, Google Analytics, and YouTube Analytics.",
       websiteUrl: "https://openseo.so",
       icons: [
         {

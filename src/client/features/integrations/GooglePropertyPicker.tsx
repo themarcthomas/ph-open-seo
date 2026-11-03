@@ -56,15 +56,25 @@ function accountLabel(account: GooglePickerAccount) {
   return account.email ?? `Google account · ${account.accountId.slice(-6)}`;
 }
 
-function accountStatus(account: GooglePickerAccount, provider: "gsc" | "ga4") {
+function accountStatus(
+  account: GooglePickerAccount,
+  provider: "gsc" | "ga4" | "youtube",
+) {
   if (account.requiresReconnect) return "Connection expired";
   if (account.unavailable) {
-    return account.apiDisabled
-      ? "Search Console API isn't enabled"
+    if (account.apiDisabled) {
+      return provider === "youtube"
+        ? "YouTube API isn't enabled"
+        : "Search Console API isn't enabled";
+    }
+    return provider === "youtube"
+      ? "Couldn't load channels"
       : "Couldn't load properties";
   }
   if (account.properties.length === 0) {
-    return provider === "gsc" ? "No websites found" : "No properties found";
+    if (provider === "gsc") return "No websites found";
+    if (provider === "youtube") return "No channels found";
+    return "No properties found";
   }
   return null;
 }
@@ -92,7 +102,7 @@ export function GooglePropertyPicker({
   secondaryAction,
   renderActions,
 }: {
-  provider: "gsc" | "ga4";
+  provider: "gsc" | "ga4" | "youtube";
   readOnly?: boolean;
   loading: boolean;
   linking?: boolean;
@@ -192,15 +202,27 @@ export function GooglePropertyPicker({
                 >
                   <ComboboxInput
                     className="w-full"
-                    placeholder="Select a property…"
-                    aria-label="Search properties"
+                    placeholder={
+                      provider === "youtube"
+                        ? "Select a channel…"
+                        : "Select a property…"
+                    }
+                    aria-label={
+                      provider === "youtube"
+                        ? "Search channels"
+                        : "Search properties"
+                    }
                     disabled={saving}
                   />
                   <ComboboxContent>
                     <ComboboxEmpty>
                       {options.length > 0
-                        ? "No matching properties."
-                        : "No properties available. Check the Google accounts below."}
+                        ? provider === "youtube"
+                          ? "No matching channels."
+                          : "No matching properties."
+                        : provider === "youtube"
+                          ? "No channels available. Check the Google accounts below."
+                          : "No properties available. Check the Google accounts below."}
                     </ComboboxEmpty>
                     <ComboboxList>
                       {(group: PropertyGroup) => (
