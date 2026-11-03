@@ -35,6 +35,7 @@ export type GooglePickerAccount = {
   requiresReconnect: boolean;
   unavailable?: boolean;
   apiDisabled?: boolean;
+  scopeMissing?: boolean;
   properties: Property[];
 };
 type SecondaryAction = {
@@ -56,7 +57,11 @@ function accountLabel(account: GooglePickerAccount) {
   return account.email ?? `Google account · ${account.accountId.slice(-6)}`;
 }
 
-function accountStatus(account: GooglePickerAccount, provider: "gsc" | "ga4") {
+function accountStatus(
+  account: GooglePickerAccount,
+  provider: "gsc" | "ga4" | "youtube",
+) {
+  if (account.scopeMissing) return "YouTube permission missing — reconnect";
   if (account.requiresReconnect) return "Connection expired";
   if (account.unavailable) {
     return account.apiDisabled
@@ -64,7 +69,9 @@ function accountStatus(account: GooglePickerAccount, provider: "gsc" | "ga4") {
       : "Couldn't load properties";
   }
   if (account.properties.length === 0) {
-    return provider === "gsc" ? "No websites found" : "No properties found";
+    if (provider === "gsc") return "No websites found";
+    if (provider === "youtube") return "No channels found";
+    return "No properties found";
   }
   return null;
 }
@@ -92,7 +99,7 @@ export function GooglePropertyPicker({
   secondaryAction,
   renderActions,
 }: {
-  provider: "gsc" | "ga4";
+  provider: "gsc" | "ga4" | "youtube";
   readOnly?: boolean;
   loading: boolean;
   linking?: boolean;
@@ -324,6 +331,15 @@ export function GooglePropertyPicker({
               {linking ? null : <Plus className="size-4" />}
               {linking ? "Opening Google…" : "Add Google account"}
             </Button>
+            {provider === "youtube" &&
+            !loading &&
+            accounts.some((account) => account.properties.length === 0) ? (
+              <p className="text-xs text-muted-foreground">
+                Brand Account channels show up when you choose that Brand
+                Account in Google&rsquo;s account chooser. Reconnect and pick
+                the Brand Account if your channel is missing.
+              </p>
+            ) : null}
             {provider === "gsc" &&
             !loading &&
             !emptyGsc &&

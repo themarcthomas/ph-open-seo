@@ -27,6 +27,7 @@ import {
   GscCard,
 } from "@/client/features/dashboard/DashboardCards";
 import { Ga4Card } from "@/client/features/dashboard/Ga4Card";
+import { YoutubeCard } from "@/client/features/dashboard/YoutubeCard";
 import { WorkspaceMergeBanner } from "@/client/features/dashboard/WorkspaceMergeBanner";
 import { QueryError } from "@/client/components/QueryState";
 import {
@@ -141,6 +142,11 @@ export function DashboardPage({
           },
         ]
       : []),
+    {
+      key: "youtube",
+      hasData: false,
+      node: <YoutubeCard projectId={projectId} />,
+    },
     ...(overview
       ? [
           {

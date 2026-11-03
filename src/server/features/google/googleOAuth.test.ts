@@ -13,6 +13,9 @@ import {
   it,
   vi,
 } from "vitest";
+import { GA4_OAUTH_SCOPES } from "@/shared/ga4";
+import { GSC_OAUTH_SCOPES } from "@/shared/gsc";
+import { YOUTUBE_ANALYTICS_SCOPE, YOUTUBE_DATA_SCOPE } from "@/shared/youtube";
 import type * as OAuthModule from "./googleOAuth";
 
 const mocks = vi.hoisted(() => ({
@@ -71,6 +74,15 @@ beforeAll(async () => {
       sql.includes("CREATE UNIQUE INDEX"),
     ),
   );
+  // The YouTube grant joins the same partial unique index. Recreate it the
+  // way the youtube migration does so Search Console and Analytics upserts
+  // still match the conflict target.
+  await client.executeMultiple(`
+    DROP INDEX IF EXISTS account_google_grant_owner_idx;
+    CREATE UNIQUE INDEX account_google_grant_owner_idx
+      ON account (user_id, provider_id, account_id)
+      WHERE "account"."provider_id" in ('google-search-console', 'google-analytics', 'youtube');
+  `);
   oauth = await import("./googleOAuth");
 });
 
@@ -408,5 +420,128 @@ describe("Google OAuth grants", () => {
       "SELECT identifier LIKE 'google-link:gsc:%' AS is_gsc FROM verification",
     );
     expect(rows.rows.map((row) => row.is_gsc)).toEqual([1]);
+  });
+
+  it("asks for both YouTube scopes without changing Search Console or Analytics scopes", async () => {
+    expect([...GSC_OAUTH_SCOPES]).toEqual([
+      "openid",
+      "email",
+      "profile",
+      "https://www.googleapis.com/auth/webmasters.readonly",
+    ]);
+    expect([...GA4_OAUTH_SCOPES]).toEqual([
+      "openid",
+      "email",
+      "profile",
+      "https://www.googleapis.com/auth/analytics.readonly",
+    ]);
+    const url = await authorizationUrl(oauth.YOUTUBE_INTEGRATION);
+    expect(url.pathname).toBe("/o/oauth2/v2/auth");
+    expect(url.searchParams.get("redirect_uri")).toBe(
+      `${publicOrigin}/api/youtube/oauth/callback`,
+    );
+    expect(url.searchParams.get("scope")?.split(" ")).toEqual([
+      "openid",
+      "email",
+      "profile",
+      YOUTUBE_ANALYTICS_SCOPE,
+      YOUTUBE_DATA_SCOPE,
+    ]);
+  });
+
+  it("refuses a YouTube grant that is missing either data scope and leaves other grants alone", async () => {
+    mocks.fetch.mockResolvedValue(
+      tokenResponse({
+        access_token: "gsc-access",
+        refresh_token: "gsc-refresh",
+        id_token: idToken,
+        scope: GSC_OAUTH_SCOPES.join(" "),
+      }),
+    );
+    await callback(
+      oauth.GSC_INTEGRATION,
+      await authorizationState(oauth.GSC_INTEGRATION),
+      { code: "gsc-code" },
+    );
+
+    mocks.fetch.mockResolvedValue(
+      tokenResponse({
+        access_token: "yt-access",
+        refresh_token: "yt-refresh",
+        id_token: idToken,
+        scope: `openid email profile ${YOUTUBE_DATA_SCOPE}`,
+      }),
+    );
+    const response = await callback(
+      oauth.YOUTUBE_INTEGRATION,
+      await authorizationState(oauth.YOUTUBE_INTEGRATION),
+      { code: "yt-code" },
+    );
+
+    expect(response.headers.get("Location")).toBe(
+      "/p/project/settings?tab=integrations&google_link_error=youtube&error=scope_not_granted",
+    );
+    expect(await grants()).toEqual([
+      {
+        user_id: "user-1",
+        provider_id: "google-search-console",
+        account_id: "google-account-1",
+        access_token: "gsc-access",
+        refresh_token: "gsc-refresh",
+      },
+    ]);
+  });
+
+  it("stores a YouTube grant beside an existing Analytics grant for the same Google account", async () => {
+    mocks.fetch.mockResolvedValue(
+      tokenResponse({
+        access_token: "ga4-access",
+        refresh_token: "ga4-refresh",
+        id_token: idToken,
+        scope: GA4_OAUTH_SCOPES.join(" "),
+      }),
+    );
+    await callback(
+      oauth.GA4_INTEGRATION,
+      await authorizationState(oauth.GA4_INTEGRATION),
+      { code: "ga4-code" },
+    );
+    mocks.fetch.mockResolvedValue(
+      tokenResponse({
+        access_token: "yt-access",
+        refresh_token: "yt-refresh",
+        id_token: idToken,
+        scope: `${YOUTUBE_ANALYTICS_SCOPE} ${YOUTUBE_DATA_SCOPE}`,
+      }),
+    );
+    const response = await callback(
+      oauth.YOUTUBE_INTEGRATION,
+      await authorizationState(oauth.YOUTUBE_INTEGRATION),
+      { code: "yt-code" },
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("Location")).toBe(
+      "/p/project/settings?tab=integrations",
+    );
+    const stored = [...(await grants())].sort((a, b) =>
+      String(a.provider_id).localeCompare(String(b.provider_id)),
+    );
+    expect(stored).toEqual([
+      {
+        user_id: "user-1",
+        provider_id: "google-analytics",
+        account_id: "google-account-1",
+        access_token: "ga4-access",
+        refresh_token: "ga4-refresh",
+      },
+      {
+        user_id: "user-1",
+        provider_id: "youtube",
+        account_id: "google-account-1",
+        access_token: "yt-access",
+        refresh_token: "yt-refresh",
+      },
+    ]);
   });
 });

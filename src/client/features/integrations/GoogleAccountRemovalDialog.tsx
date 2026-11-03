@@ -22,7 +22,7 @@ export function GoogleAccountRemovalDialog({
   onClose,
   onRemoved,
 }: {
-  provider: "gsc" | "ga4";
+  provider: "gsc" | "ga4" | "youtube";
   accountId: string;
   label: string;
   onClose: () => void;

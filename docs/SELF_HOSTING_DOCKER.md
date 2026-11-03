@@ -68,7 +68,7 @@ docker compose up -d --force-recreate init web crawl-gateway
 | `CONTEXT_API_KEY`                          | Optional JavaScript rendering for site audits                                    |
 | `GOOGLE_MAPS_API_KEY`                      | Optional map for Local SEO; see [`GOOGLE_MAPS_SETUP.md`](./GOOGLE_MAPS_SETUP.md) |
 
-For Google, register your own OAuth application with these redirect URLs under your public address: `/api/gsc/oauth/callback` for Search Console and `/api/ga4/oauth/callback` for Analytics. See [`SELF_HOSTING_GOOGLE_SEARCH_CONSOLE.md`](./SELF_HOSTING_GOOGLE_SEARCH_CONSOLE.md). Signing in with Google is not offered; accounts use email and password.
+For Google, register your own OAuth application with these redirect URLs under your public address: `/api/gsc/oauth/callback` for Search Console, `/api/ga4/oauth/callback` for Analytics, and `/api/youtube/oauth/callback` for YouTube. See [`SELF_HOSTING_GOOGLE_SEARCH_CONSOLE.md`](./SELF_HOSTING_GOOGLE_SEARCH_CONSOLE.md) and [`SELF_HOSTING_YOUTUBE.md`](./SELF_HOSTING_YOUTUBE.md). Signing in with Google is not offered; accounts use email and password.
 
 Site audits can crawl up to 10,000 pages (1,000 with JavaScript rendering), with no lifetime quota. Costs are what the providers charge, with no OpenSEO markup.
 

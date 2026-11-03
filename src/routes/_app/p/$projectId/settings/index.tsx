@@ -4,7 +4,7 @@ import { ProjectGeneralSettings } from "@/client/features/projects/ProjectGenera
 // The connection cards used to live on this page and were linked to by anchor.
 // Those links are still in the wild (older emails, agent output), so forward
 // them to the sub-page that now owns the cards.
-const MOVED_TO_INTEGRATIONS = ["search-console", "google-analytics"];
+const MOVED_TO_INTEGRATIONS = ["search-console", "google-analytics", "youtube"];
 
 export const Route = createFileRoute("/_app/p/$projectId/settings/")({
   beforeLoad: ({ params, location }) => {

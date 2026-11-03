@@ -64,6 +64,8 @@ For security-conscious setups, two advanced options replace the accounts with yo
 
 Either way, you need a DataForSEO API key to get SEO data. See [`docs/DATAFORSEO_API_KEY.md`](./docs/DATAFORSEO_API_KEY.md).
 
+YouTube Analytics is optional. On the same Google Cloud OAuth client, enable the YouTube Analytics API and YouTube Data API v3, add the scopes `https://www.googleapis.com/auth/yt-analytics.readonly` and `https://www.googleapis.com/auth/youtube.readonly`, and register the redirect URI `/api/youtube/oauth/callback`. See [`docs/SELF_HOSTING_YOUTUBE.md`](./docs/SELF_HOSTING_YOUTUBE.md). Search Console and Google Analytics keep their own grants.
+
 ## Costs
 
 OpenSEO needs a [DataForSEO](https://dataforseo.com/?aff=255379) API key so that you can get SEO data. You pay them directly when self hosting.

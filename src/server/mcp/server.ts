@@ -55,6 +55,13 @@ import {
   getGoogleAnalyticsTrafficAcquisitionTool,
   getSearchOpportunitiesTool,
 } from "@/server/mcp/tools/google-analytics-tools";
+import {
+  getYoutubeChannelOverviewTool,
+  getYoutubeSearchTermsTool,
+  getYoutubeTopVideosTool,
+  getYoutubeTrafficSourcesTool,
+  getYoutubeVideoStatsTool,
+} from "@/server/mcp/tools/youtube-tools";
 import { createProjectTool } from "@/server/mcp/tools/create-project";
 import {
   listGoogleAnalyticsPropertiesTool,
@@ -312,6 +319,11 @@ export function registerOpenSeoTools(
   register(getGoogleAnalyticsEcommercePerformanceTool);
   register(getGoogleAnalyticsSiteSearchTool);
   register(getGoogleAnalyticsAudienceBreakdownTool);
+  register(getYoutubeChannelOverviewTool);
+  register(getYoutubeTopVideosTool);
+  register(getYoutubeTrafficSourcesTool);
+  register(getYoutubeSearchTermsTool);
+  register(getYoutubeVideoStatsTool);
   register(runSiteAuditTool);
   register(listSiteAuditsTool);
   register(deleteSiteAuditTool);

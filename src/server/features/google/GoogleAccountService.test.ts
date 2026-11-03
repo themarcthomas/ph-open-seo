@@ -76,6 +76,18 @@ beforeAll(async () => {
     );
   }
   await client.execute("ALTER TABLE gsc_connections ADD gsc_account_id text");
+  await client.executeMultiple(`
+    CREATE TABLE youtube_connections (
+      id text PRIMARY KEY NOT NULL,
+      project_id text NOT NULL,
+      organization_id text NOT NULL,
+      channel_id text NOT NULL,
+      channel_title text NOT NULL,
+      connected_by_user_id text NOT NULL,
+      youtube_account_id text NOT NULL,
+      connected_account_email text
+    );
+  `);
   ({ GoogleAccountService: service } = await import("./GoogleAccountService"));
 });
 
@@ -88,7 +100,7 @@ beforeEach(async () => {
     async ({ accountId }: { accountId: string }) => `token-${accountId}`,
   );
   await client.executeMultiple(
-    "DROP TRIGGER IF EXISTS fail_remove; DELETE FROM gsc_connections; DELETE FROM ga4_connections; DELETE FROM account;",
+    "DROP TRIGGER IF EXISTS fail_remove; DELETE FROM gsc_connections; DELETE FROM ga4_connections; DELETE FROM youtube_connections; DELETE FROM account;",
   );
 });
 
@@ -138,7 +150,13 @@ async function mapping(
       ],
     });
 }
-async function rows(table: "account" | "gsc_connections" | "ga4_connections") {
+async function rows(
+  table:
+    | "account"
+    | "gsc_connections"
+    | "ga4_connections"
+    | "youtube_connections",
+) {
   return (await client.execute(`SELECT * FROM ${table} ORDER BY id`)).rows;
 }
 
@@ -275,6 +293,23 @@ it.each(["same-account", "other-account", "other-user"] as const)(
     );
   },
 );
+
+it("keeps a YouTube channel connection when another Google integration is removed", async () => {
+  await grant("google-analytics");
+  await grant("youtube");
+  await mapping("ga4", "p1");
+  await client.execute({
+    sql: "INSERT INTO youtube_connections (id, project_id, organization_id, channel_id, channel_title, connected_by_user_id, youtube_account_id) VALUES ('yt1', 'p4', 'org1', 'UCbrandaccountchannel0001', 'Brand', 'u1', 'google-a')",
+  });
+  await service.remove({
+    provider: "ga4",
+    accountId: "google-a",
+    userId: "u1",
+  });
+  expect(await rows("ga4_connections")).toEqual([]);
+  expect(await rows("youtube_connections")).toHaveLength(1);
+  expect(oauth.revokeGoogleToken).not.toHaveBeenCalled();
+});
 
 it("revokes a removed grant only once no stored grant uses that Google account", async () => {
   await grant("google-search-console");
